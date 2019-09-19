@@ -1,0 +1,46 @@
+server:
+  port: 2727
+
+management:
+  server:
+    port: 2729
+
+nexmo:
+  monitoring:
+    service-name: ${spring.application.name}
+
+nexmo-chatapp-callback:
+  kafka:
+    host: localhost:9092
+    consumer-web-client:
+      topic: 'service_chatapp_http-callback'
+      properties:
+        '[bootstrap.servers]': ${nexmo-chatapp-callback.kafka.host}
+        '[group.id]': chatapp-callback
+        '[key.deserializer]': org.apache.kafka.common.serialization.StringDeserializer
+        '[value.deserializer]': com.example.demo.serialize.ExternalCallbackDeserializer
+        '[auto.offset.reset]': earliest
+        '[enable.auto.commit]': true
+        '[client.id]': ${nexmo.hostname}-${datacenter}-1
+        '[max.poll.records]': 30
+        '[max.poll.interval.ms]': 60000
+        '[session.timeout.ms]': 15000
+    consumer-retry:
+      topic: 'retry-topic'
+      properties:
+        '[bootstrap.servers]': ${nexmo-chatapp-callback.kafka.host}
+        '[group.id]': chatapp-callback
+        '[key.deserializer]': org.apache.kafka.common.serialization.StringDeserializer
+        '[value.deserializer]': com.example.demo.serialize.ExternalCallbackDeserializer
+        '[auto.offset.reset]': earliest
+        '[enable.auto.commit]': true
+        '[client.id]': ${nexmo.hostname}-${datacenter}-2
+        '[max.poll.records]': 30
+        '[max.poll.interval.ms]': 60000
+        '[session.timeout.ms]': 15000
+    retry-sender-options:
+      '[bootstrap.servers]':  localhost:9092
+      '[key.serializer]': org.apache.kafka.common.serialization.StringSerializer
+      '[value.serializer]': org.apache.kafka.common.serialization.StringSerializer
+      '[client.id]': ${nexmo.hostname}-${datacenter}
+      '[acks]': all

@@ -1,0 +1,29 @@
+plugins {
+	id 'org.springframework.boot' version '2.1.8.RELEASE'
+	id 'io.spring.dependency-management' version '1.0.8.RELEASE'
+	id 'java'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '1.8'
+
+repositories {
+	mavenCentral()
+	maven { url "http://artifactory.internal/artifactory/libs-all/" }
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	implementation 'com.nexmo.spring:monitoring-spring-boot-starter:1.0.6'
+	implementation ( 'io.projectreactor.kafka:reactor-kafka:1.1.1.RELEASE' ) {
+		exclude group: 'org.apache.kafka', module: 'kafka-clients'
+	}
+	implementation group: 'org.apache.kafka', name: 'kafka-clients', version: '2.3.0'
+	implementation group: 'org.springframework.kafka', name: 'spring-kafka', version: "2.2.7.RELEASE"
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'io.projectreactor:reactor-test'
+}
