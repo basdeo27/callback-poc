@@ -26,6 +26,7 @@ public class KafkaConfiguration {
     private final WebClientProperties webClientProperties;
     private final RetryProperties retryProperties;
 
+    private KafkaReceiver<String, ExternalCallback> retryKafkaReceiver;
     private Flux<ReceiverRecord<String, ExternalCallback>> fluxRetry;
     private Flux<ReceiverRecord<String, ExternalCallback>> fluxWebClient;
 
@@ -49,7 +50,8 @@ public class KafkaConfiguration {
     @Bean
     public Flux<ReceiverRecord<String, ExternalCallback>> retryPropertiesFlux() {
         ReceiverOptions<String, ExternalCallback> options = retryProperties.asReceiverOptions();
-        fluxRetry = KafkaReceiver.create(options).receive();
+        retryKafkaReceiver = KafkaReceiver.create(options);
+        fluxRetry = retryKafkaReceiver.receive();
         return fluxRetry;
     }
 
@@ -70,7 +72,7 @@ public class KafkaConfiguration {
                 .runOn(Schedulers.elastic())
                 .map(externalCallback -> new ExternalCallback(externalCallback))
                 .flatMap(externalCallback -> processor.process(externalCallback)
-                        //.retryBackoff(maxRetries, initBackoff, maxBackoff)
+                        .retryBackoff(maxRetries, initBackoff, maxBackoff)
                         .onErrorResume(e ->
                             kafkaProducer.sendCallbacks(String.valueOf(Math.random()),
                                                         externalCallback,
@@ -89,8 +91,8 @@ public class KafkaConfiguration {
         ConsumerRegistry consumerRegistry = event.getApplicationContext().getBean(ConsumerRegistry.class);
 
         Disposable disposable = fluxRetry.doOnNext(record -> {
-            //pause(record);
             record.receiverOffset().commit();
+           // pause(record);
         }
         )
                 .map(ConsumerRecord::value)
@@ -135,5 +137,26 @@ public class KafkaConfiguration {
 
         }
     }
-
+/*
+    private void pause(ReceiverRecord<String, ExternalCallback> receiverRecord) {
+        try {
+            Collection<TopicPartition> topicPartitions = Collections.singleton(new TopicPartition("retry-topic", receiverRecord.partition()));
+            retryKafkaReceiver.doOnConsumer(consumer -> {
+                consumer.pause(topicPartitions);
+                return Mono.just(consumer);
+            }).subscribe();
+            long timeToSleep = receiverRecord.value().getNextRetry() - System.currentTimeMillis();
+            while(timeToSleep > 0) {
+                Thread.sleep(100L);
+                timeToSleep -= 100;
+            }
+            retryKafkaReceiver.doOnConsumer(consumer -> {
+                consumer.resume(topicPartitions);
+                return Mono.just(consumer);
+            }).subscribe();
+        } catch (Exception e) {
+            log.error("Thread sleep is interupted");
+        }
+    }
+*/
 }
